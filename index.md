@@ -1,37 +1,215 @@
-## Welcome to GitHub Pages
 
-You can use the [editor on GitHub](https://github.com/liaojinliang/thanks/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title></title>
+    <style>
+body {
+  background-color:black;
+  overflow: hidden;
+  color: linen;
+}
+img {
+  width: 100vw;
+  display: block;
+  margin: 0 auto;
+}
+canvas {
+  background: linear-gradient(
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 1) 50%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  display: inline-block;
+  position: absolute;
+  bottom: 30%;
+  z-index: 10;
+}
+#buffer {
+  display: none;
+}
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+    </style>
+</head>
+<body>
+<canvas id="buffer"></canvas>
+<canvas id="canvas"></canvas>
+<script>
+    let rid = null;
+let frames = 0;
+let index = 0;
+let fontSize = 50;
 
-### Markdown
+let lines = [];
+let points = [];
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+let speed = 11;
 
-```markdown
-Syntax highlighted code block
+const ctx = canvas.getContext("2d");
+const btx = buffer.getContext("2d");
 
-# Header 1
-## Header 2
-### Header 3
+let bw = (buffer.width = fontSize);
+let bh = (buffer.height = fontSize);
+let cw = (canvas.width = window.innerWidth);
+let ch = (canvas.height = 300);
+btx.fillStyle = ctx.fillStyle = "#fff";
+btx.font = ctx.font = fontSize + "px Courier New";
+let text = [
+  '张凤霞老师',
+  "你好 Welcome to the page !!!",
+  "首先 ",
+  "2020 即将离去 2021 即将来临",
+  "感谢这一年以来 有你的陪伴 ",
+  "感谢这一年以来 有你的帮助",
+  "感谢这一年以来 有你的教导",
+  "感谢这一年以来 有你的鼓励",
+  "你的教诲如太阳般温暖",
+  "你的鼓励给予我前进的动力",
+  "其次",
+  "祝你新的一年天天开心，心想事成",
+  "祝你新的一年好事连连，好梦圆圆",
+  "未 来 可 期",
+  "学生 在此 致敬",
+];
 
-- Bulleted
-- List
+text.map((t, i) => {
+  text[i] = t.toUpperCase();
+});
+	
 
-1. Numbered
-2. List
+class Line {
+  constructor(text) {
+    this.text = text;
+    this.width = ctx.measureText(this.text).width;
+    this.startingPoint = -this.width / 2;
+    this.letters = [];
 
-**Bold** and _Italic_ and `Code` text
+    this.lettersRy();
+  }
 
-[Link](url) and ![Image](src)
-```
+  lettersRy() {
+    for (let i = 0; i < this.text.length; i++) {
+      let letter = this.text[i];
+      let _start =
+        this.startingPoint + ctx.measureText(this.text.substring(0, i)).width;
+      let pos = { x: _start, y: (ch - fontSize) / 2 };
+      this.letters.push(new Letter(i, pos, letter));
+    }
+  }
+}
 
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
+class Letter {
+  constructor(i, pos, letter) {
+    this.index = index;
+    this.letter = letter;
+    this.pos = pos;
+    this.points = [];
+    this.addToPointsRy();
+  }
+  addToPointsRy() {
+    btx.clearRect(0, 0, bw, bh);
+    btx.fillText(this.letter, 2, bh - 2);
+    let imgData = btx.getImageData(0, 0, bw, bh);
+    let pixels = imgData.data;
 
-### Jekyll Themes
+    for (let i = 0; i < pixels.length; i += 4) {
+      if (pixels[i] == 255) {
+        let x = (0.25 * i) % bw;
+        let y = ~~(0.25 * i / bw);
+        this.points.push(new Particle(x + this.pos.x, y + this.pos.y));
+      }
+    }
+  }
+}
 
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/liaojinliang/thanks/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
+class Particle {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.pos = { x, y };
+    this.pn = {
+      // positive or negative
+      x: Math.random() > 0.2 ? 1 : -1,
+      y: Math.random() > 0.2 ? -1 : 1
+    };
+    this.vel = {
+      x: this.pn.x * (this.pn.x + Math.random() * 10) / 90,
+      y: this.pn.y * (this.pn.y + Math.random() * 10) / 90,
+      alp: (0.1 + Math.random()) / 60
+    };
+    this.alp = 1;
+  }
 
-### Support or Contact
+  draw() {
+    ctx.fillStyle = "rgba(255,255,255," + this.alp + ")";
+    ctx.beginPath();
+    ctx.fillRect(this.pos.x, this.pos.y, 1, 1);
+  }
 
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://github.com/contact) and we’ll help you sort it out.
+  update() {
+    this.pos.x += this.vel.x;
+    this.pos.y += this.vel.y;
+    this.alp -= this.vel.alp;
+  }
+}
+
+for (let i = 0; i < text.length; i++) {
+  lines.push(new Line(text[i]));
+}
+
+let numLine = 0;
+let line = lines[numLine];
+
+ctx.translate(cw / 2, 0);
+function Frame() {
+  rid = window.requestAnimationFrame(Frame);
+
+  ctx.clearRect(-cw, -ch, 2 * cw, 2 * ch);
+  points.map((p, i) => {
+    p.update();
+    p.draw();
+    if (p.alp <= 0) {
+      points.splice(i, 1);
+    }
+  });
+
+  if (frames % speed == 0) {
+    line.letters[index].points.map(p => {
+      p.pos = { x: p.x, y: p.y };
+      p.alp = 1;
+    });
+    points = points.concat(line.letters[index].points);
+    index++;
+  }
+
+  if (index == line.letters.length) {
+    numLine++;
+    line = lines[numLine % text.length];
+    index = 0;
+    frames = 0;
+  }
+  frames++;
+}
+//Frame();
+
+function Init() {
+  cw = canvas.width = window.innerWidth;
+  ctx.translate(cw / 2, 0);
+  //let imgHeight = window.getComputedStyle(LC, null).getPropertyValue("height");
+  //canvas.style.bottom = imgHeight + "px";
+  if (rid) {
+    window.cancelAnimationFrame(rid);
+    rid = null;
+  }
+  Frame();
+}
+
+setTimeout(function() {
+  Init();
+  window.addEventListener("resize", Init, false);
+}, 20);
+
+</script>
+</body>
+</html>
